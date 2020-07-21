@@ -15,3 +15,7 @@ before_install:
 install:
   - python setup.py install
   - python setup.py sdist
+before_script:
+  - pylint enedis tests
+script:
+  - py.test
