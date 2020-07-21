@@ -5,9 +5,12 @@ import requests
 import simplejson
 from dateutil.relativedelta import relativedelta
 
-from .exceptions import (EnedisAccessException,
-                         EnedisException, EnedisMaintenanceException,
-                         EnedisWrongLoginException)
+from .exceptions import (
+    EnedisAccessException,
+    EnedisException,
+    EnedisMaintenanceException,
+    EnedisWrongLoginException,
+)
 
 from .abstractauth import AbstractAuth
 from .linkyapi import EnedisAPI
@@ -18,16 +21,22 @@ MONTHLY = "monthly"
 YEARLY = "yearly"
 
 
-_DELTA = 'delta'
-_FORMAT = 'format'
-_RESSOURCE = 'ressource'
-_DURATION = 'duration'
+_DELTA = "delta"
+_FORMAT = "format"
+_RESSOURCE = "ressource"
+_DURATION = "duration"
 _MAP = {
-    _DELTA: {HOURLY: 'hours', DAILY: 'days', MONTHLY: 'months', YEARLY: 'years'},
+    _DELTA: {HOURLY: "hours", DAILY: "days", MONTHLY: "months", YEARLY: "years"},
     _FORMAT: {HOURLY: "%H:%M", DAILY: "%d %b", MONTHLY: "%b", YEARLY: "%Y"},
-    _RESSOURCE: {HOURLY: 'urlCdcHeure', DAILY: 'urlCdcJour', MONTHLY: 'urlCdcMois', YEARLY: 'urlCdcAn'},
-    _DURATION: {HOURLY: 24, DAILY: 30, MONTHLY: 12, YEARLY: 3}
+    _RESSOURCE: {
+        HOURLY: "urlCdcHeure",
+        DAILY: "urlCdcJour",
+        MONTHLY: "urlCdcMois",
+        YEARLY: "urlCdcAn",
+    },
+    _DURATION: {HOURLY: 24, DAILY: 30, MONTHLY: 12, YEARLY: 3},
 }
+
 
 class EnedisClient(object):
 
@@ -49,8 +58,10 @@ class EnedisClient(object):
             if not upids:
                 raise EnedisException("No usage point")
             upid = upids[0]
-            if p_p_resource_id == 'urlCdcHeure':
-                raw_res = self._api.get_consumption_load_curve(upids, start_date, end_date)
+            if p_p_resource_id == "urlCdcHeure":
+                raw_res = self._api.get_consumption_load_curve(
+                    upids, start_date, end_date
+                )
             else:
                 raw_res = self._api.get_daily_consumption(upids, start_date, end_date)
         except OSError as err:
@@ -64,15 +75,24 @@ class EnedisClient(object):
 
         try:
             json_output = raw_res.json()
-        except (OSError, json.decoder.JSONDecodeError, simplejson.errors.JSONDecodeError) as err:
-            raise EnedisException("Impossible to decode response: " + str(err) + "\nResponse was: " + str(raw_res.text))
+        except (
+            OSError,
+            json.decoder.JSONDecodeError,
+            simplejson.errors.JSONDecodeError,
+        ) as err:
+            raise EnedisException(
+                "Impossible to decode response: "
+                + str(err)
+                + "\nResponse was: "
+                + str(raw_res.text)
+            )
 
-        if json_output.get('error'):
-            description = json_output.get('error_description')
-            description = json_output['error'] if description is None else description
+        if json_output.get("error"):
+            description = json_output.get("error_description")
+            description = json_output["error"] if description is None else description
             raise EnedisException("Enedis.fr answered with an error: " + description)
 
-        return json_output['meter_reading']
+        return json_output["meter_reading"]
 
     def format_data(self, data, time_format=None):
         result = []
@@ -81,24 +101,25 @@ class EnedisClient(object):
         if not data:
             return []
 
-        period_type = data['period_type']
+        period_type = data["period_type"]
         if time_format is None:
             time_format = _MAP[_FORMAT][period_type]
         format_data = _MAP[_DELTA][period_type]
 
         in_format_date = "%Y-%m-%d"
-        if format_data == 'hours':
+        if format_data == "hours":
             in_format_date = "%Y-%m-%d %H:%M:%S"
 
         dicResult = dict()
-        for p in data['interval_reading']:
-            key = datetime.datetime.strptime(p['date'], in_format_date).strftime(time_format)
-            dicResult[key] = dicResult.get(key, 0) + int(p['value'])
+        for p in data["interval_reading"]:
+            key = datetime.datetime.strptime(p["date"], in_format_date).strftime(
+                time_format
+            )
+            dicResult[key] = dicResult.get(key, 0) + int(p["value"])
 
         # Generate data
         for key in dicResult:
-            result.append({"time": key,
-                           "conso": dicResult[key]})
+            result.append({"time": key, "conso": dicResult[key]})
 
         return result
 
@@ -107,19 +128,19 @@ class EnedisClient(object):
         if start is None:
             kwargs = {_MAP[_DELTA][period_type]: _MAP[_DURATION][period_type]}
             if period_type == YEARLY:
-                start = (today - relativedelta(**kwargs))
+                start = today - relativedelta(**kwargs)
             # 12 last complete months + current month
             elif period_type == MONTHLY:
-                start = (today.replace(day=1) - relativedelta(**kwargs))
+                start = today.replace(day=1) - relativedelta(**kwargs)
             else:
-                start = (today - relativedelta(**kwargs))
+                start = today - relativedelta(**kwargs)
         if end is None:
             if period_type == YEARLY:
                 end = today
             elif period_type == HOURLY:
                 end = today
             else:
-                end = (today - relativedelta(days=1))
+                end = today - relativedelta(days=1)
 
         if start is not None:
             start = start.strftime("%Y-%m-%d")
@@ -127,7 +148,7 @@ class EnedisClient(object):
             end = end.strftime("%Y-%m-%d")
 
         data = self._get_data(_MAP[_RESSOURCE][period_type], start, end)
-        data['period_type'] = period_type
+        data["period_type"] = period_type
 
         self._data[period_type] = data
         return data
