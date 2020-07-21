@@ -22,7 +22,7 @@ class AbstractAuth:
         client_secret: str = None,
         redirect_url: str = None,
         token_updater: Optional[Callable[[str], None]] = None,
-        sandbox: bool = True
+        sandbox: bool = False
     ):
         self.client_id = client_id
         self.client_secret = client_secret
