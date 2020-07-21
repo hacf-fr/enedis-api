@@ -1,9 +1,9 @@
 from typing import Optional, Union, Callable, Dict
 
+from urllib.parse import urlencode
 from requests import Response
 from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import TokenExpiredError
-from urllib.parse import urlencode
 
 
 AUTHORIZE_URL_SANDBOX = "https://gw.hml.api.enedis.fr/dataconnect/v1/oauth2/authorize"
