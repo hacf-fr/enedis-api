@@ -9,8 +9,10 @@ here = path.abspath(path.dirname(__file__))
 if sys.version_info < (3, 6):
     sys.exit('Sorry, Python < 3.6 is not supported')
 
-# Get the long description from the README file
-with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
+with open("requirements.txt") as f:
+    required = f.read().splitlines()
+
+with open("README.rst", encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
@@ -30,7 +32,7 @@ setup(
           ]
       },
       license='Apache 2.0',
-      install_requires=['python-dateutil', 'requests', 'simplejson', 'requests_oauthlib', 'oauthlib'],
+      install_requires=required,
       classifiers=[
           'Programming Language :: Python :: 3.6',
           'Programming Language :: Python :: 3.7',
