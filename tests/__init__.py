@@ -1,1 +1,1 @@
-from pylinky.client import LinkyClient
+"""Tests the lib."""

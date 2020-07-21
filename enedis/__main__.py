@@ -1,13 +1,10 @@
 import argparse
 import sys
-import json
 from urllib.parse import urlparse, parse_qs
-
-from pylinky import LinkyAPI, AbstractAuth, LinkyClient
-
 import logging
-import contextlib
 from http.client import HTTPConnection
+
+from enedis import EnedisAPI, AbstractAuth, EnedisClient
 
 def main():
     """Main function"""
@@ -36,7 +33,7 @@ def main():
     test_consumer = args.test_consumer
 
     auth = AbstractAuth(client_id=args.client_id, client_secret=args.client_secret, redirect_url=args.redirect_url)
-    linky_api = LinkyAPI(auth)
+    linky_api = EnedisAPI(auth)
 
     try:
         authorization_url = linky_api.get_authorisation_url(test_customer=test_consumer)
@@ -45,11 +42,11 @@ def main():
         authorization_response_qa = parse_qs(urlparse(authorization_response).query)
 
         code = authorization_response_qa["code"][0]
-        state = authorization_response_qa["state"][0]
+        # state = authorization_response_qa["state"][0]
 
-        token = linky_api.request_tokens(code)
-        # Not needed, just a test to make sure that refresh_tokens works
-        token = auth.refresh_tokens()
+        # token = linky_api.request_tokens(code)
+        # # Not needed, just a test to make sure that refresh_tokens works
+        # token = auth.refresh_tokens()
 
         usage_point_ids = linky_api.get_usage_point_ids()
 
@@ -102,7 +99,7 @@ def main():
             print(response.content)
             #input("Press a key")
 
-        linky_client = LinkyClient(auth)
+        linky_client = EnedisClient(auth)
         linky_client.fetch_data()
         data = linky_client.get_data()
         print(data)
@@ -118,4 +115,3 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
-

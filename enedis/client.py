@@ -5,12 +5,12 @@ import requests
 import simplejson
 from dateutil.relativedelta import relativedelta
 
-from .exceptions import (PyLinkyAccessException, PyLinkyEnedisException,
-                         PyLinkyException, PyLinkyMaintenanceException,
-                         PyLinkyWrongLoginException)
+from .exceptions import (EnedisAccessException,
+                         EnedisException, EnedisMaintenanceException,
+                         EnedisWrongLoginException)
 
 from .abstractauth import AbstractAuth
-from .linkyapi import LinkyAPI
+from .linkyapi import EnedisAPI
 
 HOURLY = "hourly"
 DAILY = "daily"
@@ -29,7 +29,7 @@ _MAP = {
     _DURATION: {HOURLY: 24, DAILY: 30, MONTHLY: 12, YEARLY: 3}
 }
 
-class LinkyClient(object):
+class EnedisClient(object):
 
     PERIOD_DAILY = DAILY
     PERIOD_MONTHLY = MONTHLY
@@ -38,7 +38,7 @@ class LinkyClient(object):
 
     def __init__(self, auth: AbstractAuth, authorize_duration="P1Y"):
         """Initialize the client object."""
-        self._api = LinkyAPI(auth, authorize_duration)
+        self._api = EnedisAPI(auth, authorize_duration)
         self._data = {}
 
     def _get_data(self, p_p_resource_id, start_date=None, end_date=None):
@@ -47,30 +47,30 @@ class LinkyClient(object):
         try:
             upids = self._api.get_usage_point_ids()
             if not upids:
-                raise PyLinkyException("No usage point")
+                raise EnedisException("No usage point")
             upid = upids[0]
             if p_p_resource_id == 'urlCdcHeure':
                 raw_res = self._api.get_consumption_load_curve(upids, start_date, end_date)
             else:
                 raw_res = self._api.get_daily_consumption(upids, start_date, end_date)
-        except OSError as e:
-            raise PyLinkyAccessException("Could not access enedis.fr: " + str(e))
+        except OSError as err:
+            raise EnedisAccessException("Could not access enedis.fr: " + str(err))
 
         if 404 == raw_res.status_code:
-            raise PyLinkyException("No data")
+            raise EnedisException("No data")
 
         if 500 == raw_res.status_code:
-            raise PyLinkyMaintenanceException("Site in maintenance")
+            raise EnedisMaintenanceException("Site in maintenance")
 
         try:
             json_output = raw_res.json()
-        except (OSError, json.decoder.JSONDecodeError, simplejson.errors.JSONDecodeError) as e:
-            raise PyLinkyException("Impossible to decode response: " + str(e) + "\nResponse was: " + str(raw_res.text))
+        except (OSError, json.decoder.JSONDecodeError, simplejson.errors.JSONDecodeError) as err:
+            raise EnedisException("Impossible to decode response: " + str(err) + "\nResponse was: " + str(raw_res.text))
 
         if json_output.get('error'):
             description = json_output.get('error_description')
             description = json_output['error'] if description is None else description
-            raise PyLinkyEnedisException("Enedis.fr answered with an error: " + description)
+            raise EnedisException("Enedis.fr answered with an error: " + description)
 
         return json_output['meter_reading']
 

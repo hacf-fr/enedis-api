@@ -1,18 +1,18 @@
 
-pyLinky
+Enedis API
 =======
 
-.. image:: https://travis-ci.org/Pirionfr/pyLinky.svg?branch=master
-    :target: https://travis-ci.org/Pirionfr/pyLinky
+.. image:: https://travis-ci.org/hacf-fr/enedis-api.svg?branch=master
+    :target: https://travis-ci.org/hacf-fr/enedis-api
 
-.. image:: https://img.shields.io/pypi/v/pyLinky.svg
-    :target: https://pypi.python.org/pypi/pyLinky
+.. image:: https://img.shields.io/pypi/v/enedis-api.svg
+    :target: https://pypi.python.org/pypi/enedis-api
 
-.. image:: https://img.shields.io/pypi/pyversions/pyLinky.svg
-    :target: https://pypi.python.org/pypi/pyLinky
+.. image:: https://img.shields.io/pypi/pyversions/enedis-api.svg
+    :target: https://pypi.python.org/pypi/enedis-api
 
-.. image:: https://requires.io/github/Pirionfr/pyLinky/requirements.svg?branch=master
-    :target: https://requires.io/github/Pirionfr/pyLinky/requirements/?branch=master
+.. image:: https://requires.io/github/hacf-fr/enedis-api/requirements.svg?branch=master
+    :target: https://requires.io/github/hacf-fr/enedis-api/requirements/?branch=master
     :alt: Requirements Status
 
 Get your consumption data from your Enedis account (www.enedis.fr)
@@ -35,18 +35,18 @@ Installation
 
 The easiest way to install the library is using `pip <https://pip.pypa.io/en/stable/>`_::
 
-    pip install pylinky
+    pip install enedis-api
 
 You can also download the source code and install it manually::
 
-    cd /path/to/pylinky/
+    cd /path/to/enedis-api/
     python setup.py install
 
 Usage
 -----
 Print your current data
 
-    pylinky -c <client_id> -s <client_secret> -u <redirect_url>
+    enedis-api -c <client_id> -s <client_secret> -u <redirect_url>
 
 Dev env
 -------

@@ -12,7 +12,7 @@ SCOPE = {
 "ADDRESSES": "/v3/customers/usage_points/addresses"
 }
 
-class LinkyAPI(object):
+class EnedisAPI(object):
 
     def __init__(self, auth: AbstractAuth, authorize_duration="P1Y", ):
         """Initialize the client object."""
