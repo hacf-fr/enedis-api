@@ -1,5 +1,7 @@
 from .abstractauth import AbstractAuth
 
+from requests_oauthlib import OAuth2Session
+
 SCOPE = {
     "CONSUMPTION_LOAD_CURVE": "/v4/metering_data/consumption_load_curve",
     "PRODUCTION_LOAD_CURVE": "/v4/metering_data/production_load_curve",
@@ -13,9 +15,9 @@ SCOPE = {
 }
 
 
-class EnedisClient(object):
+class EnedisClient:
     def __init__(
-        self, auth: AbstractAuth, authorize_duration="P1Y",
+        self, auth: OAuth2Session, authorize_duration="P1Y",
     ):
         """Initialize the client object."""
         self.authorize_duration = authorize_duration

@@ -1,79 +1,53 @@
+"""Sud Domotique Enedis Auth."""
 from typing import Optional, Union, Callable, Dict
 
 from urllib.parse import urlencode
-from requests import Response
+from requests import Response, Session
 from requests_oauthlib import OAuth2Session
-from oauthlib.oauth2 import TokenExpiredError
+
+from .abstractauth import METERING_DATA_BASE_URL_PROD
 
 AUTHORIZE_URL_PROD = "http://www.sud-domotique-expert.fr/enedis/accord_enedis_prod.html"
 ENDPOINT_TOKEN_URL_PROD = "http://www.sud-domotique-expert.fr/enedis/enedis_token_prod.php"
 # ?refresh_token="+refresh_token+"&box_url="+box_url+"&flow_id="+flow_id;
-METERING_DATA_BASE_URL_PROD = "https://gw.prd.api.enedis.fr"
 
-class SudDomotique(AbstractAuth):
+
+class SudDomotiqueAuth(OAuth2Session):
+    """Sud Domotique Enedis Auth."""
+
     def __init__(
         self,
+        redirect_uri: str,
         token: Optional[Dict[str, str]] = None,
-        client_id: str = None,
-        client_secret: str = None,
-        redirect_url: str = None,
-        token_updater: Optional[Callable[[str], None]] = None,
+        token_updater: Optional[Callable[[Dict[str, str]], None]] = None,
     ):
-        self.client_id = client_id
-        self.client_secret = client_secret
-        self.redirect_url = redirect_url
-        self.token_updater = token_updater
+        self.redirect_uri = redirect_uri
+        self.token: Optional[Dict[str, str]] = token or None # Should contain refresh_token + access_token
+        self.token_updater = token_updater or self.update_token
 
-        extra = {"client_id": self.client_id, "client_secret": self.client_secret}
-
-        self._oauth = OAuth2Session(
-            auto_refresh_kwargs=extra,
-            client_id=client_id,
+        self._session = Session()
+        super(SudDomotiqueAuth, self).__init__(
+            redirect_uri=redirect_uri,
             token=token,
-            token_updater=token_updater,
+            token_updater=token_updater
         )
 
-    def authorization_url(self, duration: str = "", test_customer: str = ""):
+    def update_token(self, token: Dict[str, str]):
+        """Update tokens."""
+        self.token = token
+
+    def authorization_url(self, **kwargs):
         """test state will be appended to state for sandbox testing, it can be 0 to 9"""
-        url = AUTHORIZE_URL_PROD
-        state = self._oauth.new_state()
-        if test_customer:
-            state = state + test_customer
-        return self._oauth.authorization_url(url, duration=duration, state=state)
+        # self._session = Session()
+        return AUTHORIZE_URL_PROD + "?"+ urlencode({"redirect_uri": self.redirect_uri, **kwargs})
 
-    def refresh_tokens(self) -> Dict[str, Union[str, int]]:
+    def refresh_tokens(self, **kwargs) -> Dict[str, Union[str, int]]:
         """Refresh and return new tokens."""
-        url = ENDPOINT_TOKEN_URL_PROD
-        if self.redirect_url is not None:
-            url = url + "?" + urlencode({"redirect_uri": self.redirect_url})
-        token = self._oauth.refresh_token(
-            url,
-            include_client_id=True,
-            client_id=self.client_id,
-            client_secret=self.client_secret,
-            refresh_token=self._oauth.token["refresh_token"],
-        )
+        url = ENDPOINT_TOKEN_URL_PROD + "?" + urlencode({"refresh_token": self.token["refresh_token"], **kwargs})
+        token = self._session.get(url)
 
-        if self.token_updater is not None:
-            self.token_updater(token)
+        self.token_updater(token)
 
-        return token
-
-    def request_tokens(self, code) -> Dict[str, Union[str, int]]:
-        """return new tokens."""
-        url = ENDPOINT_TOKEN_URL_PROD
-        if self.redirect_url is not None:
-            url = url + "?" + urlencode({"redirect_uri": self.redirect_url})
-        token = self._oauth.fetch_token(
-            url,
-            include_client_id=True,
-            client_id=self.client_id,
-            client_secret=self.client_secret,
-            code=code,
-        )
-
-        if self.token_updater is not None:
-            self.token_updater(token)
         return token
 
     def request(self, path: str, arguments: Dict[str, str]) -> Response:
@@ -83,26 +57,25 @@ class SudDomotique(AbstractAuth):
         """
         url = METERING_DATA_BASE_URL_PROD + path
         # This header is required by v3/customers, v4/metering data is ok with the default */*
-        headers = {"Accept": "application/json"}
-        try:
-            response = self._oauth.request(
-                "GET", url, params=arguments, headers=headers
-            )
-            if response.status_code == 403:
-                self._oauth.token = self.refresh_tokens()
-            else:
-                return response
-        except TokenExpiredError:
-            self._oauth.token = self.refresh_tokens()
-
-        return self._oauth.request("GET", url, params=arguments, headers=headers)
+        headers = {
+                'Accept': 'application/json',
+                'Content-Type': (
+                    'application/x-www-form-urlencoded;charset=UTF-8'
+                ),
+            }
+        response = self._session.get(url, params=arguments, headers=headers)
+        if response.status_code == 403:
+            self.refresh_tokens()
+            return self._session.get(url, params=arguments, headers=headers)
+        return response
 
     def get_usage_point_ids(self):
-        if not self._oauth.token or not self._oauth.token.get("usage_points_id"):
+        """Get the usage point ids."""
+        if not self.token or not self.token.get("usage_points_id"):
             return []
-        return self._oauth.token["usage_points_id"].split(",")
+        return self.token["usage_points_id"].split(",")
 
     def close(self):
-        if self._oauth:
-            self._oauth.close()
-        self._oauth = None
+        if self._session:
+            self._session.close()
+        self._session = None
