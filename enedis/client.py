@@ -1,4 +1,4 @@
-from .abstractauth import AbstractAuth
+from .auth import AbstractAuth
 
 from requests_oauthlib import OAuth2Session
 
