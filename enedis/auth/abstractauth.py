@@ -6,6 +6,9 @@ from requests import Response
 from requests_oauthlib import OAuth2Session
 from oauthlib.oauth2 import TokenExpiredError
 
+import logging
+_LOGGER = logging.getLogger(__name__)
+
 
 AUTHORIZE_URL_SANDBOX = "https://gw.hml.api.enedis.fr/dataconnect/v1/oauth2/authorize"
 ENDPOINT_TOKEN_URL_SANDBOX = "https://gw.hml.api.enedis.fr/v1/oauth2/token"
@@ -21,20 +24,34 @@ class AbstractAuth(OAuth2Session):
 
     def __init__(
         self,
-        token: Optional[Dict[str, str]] = None,
         client_id: str = None,
         client_secret: str = None,
         redirect_uri: str = None,
+        token: Optional[Dict[str, str]] = None,
         token_updater: Optional[Callable[[str], None]] = None,
         sandbox: bool = False,
+        authorize_url: str = None,
+        token_url: str = None,
+        extra_params: Optional[Dict[str, str]] = None,
+        **kwargs
     ):
         self.client_id = client_id
         self.client_secret = client_secret
         self.redirect_uri = redirect_uri
-        self.token_updater = token_updater
+        self.token_updater = token_updater or self.update_token
+
+        # Custom Linky
         self.sandbox = sandbox
+        self.authorize_url = authorize_url or AUTHORIZE_URL_PROD if not sandbox else AUTHORIZE_URL_SANDBOX
+        self.token_url = token_url or ENDPOINT_TOKEN_URL_PROD if not sandbox else ENDPOINT_TOKEN_URL_SANDBOX
+        self.extra_params = extra_params or {}
 
         extra = {"client_id": self.client_id, "client_secret": self.client_secret}
+
+        _LOGGER.warning("AbstractAuth.init")
+        _LOGGER.warning(redirect_uri)
+        _LOGGER.warning(self.authorize_url)
+        _LOGGER.warning(self.token_url)
 
         super(AbstractAuth, self).__init__(
             client_id=client_id,
@@ -43,24 +60,36 @@ class AbstractAuth(OAuth2Session):
             token=token,
             token_updater=token_updater
         )
+    
+    def update_token(self, token: Dict[str, str]):
+        """Update tokens."""
+        self.token = token
 
-    def authorization_url(self, duration: str = "", test_customer: str = ""):
+    def authorization_url(self, duration: str = None, test_customer: str = None, params: Dict[str, str] = None):
         """test state will be appended to state for sandbox testing, it can be 0 to 9"""
-        url = AUTHORIZE_URL_PROD
-        if self.sandbox:
-            url = AUTHORIZE_URL_SANDBOX
         state = self.new_state()
         if test_customer:
             state = state + test_customer
-        return super(AbstractAuth, self).authorization_url(url, duration=duration, state=state)
+        
+        params = params or {}
+        params.update({"redirect_uri": self.redirect_uri})
+        params.update(self.extra_params)
+        url = self.authorize_url + "?" + urlencode(params)
 
-    def refresh_tokens(self) -> Dict[str, Union[str, int]]:
+        return super(AbstractAuth, self).authorization_url(
+            url,
+            redirect_uri=self.redirect_uri,
+            state=state,
+            duration=duration,
+        )
+
+    def refresh_tokens(self, params: Dict[str, str] = None) -> Dict[str, Union[str, int]]:
         """Refresh and return new tokens."""
-        url = ENDPOINT_TOKEN_URL_PROD
-        if self.sandbox:
-            url = ENDPOINT_TOKEN_URL_SANDBOX
-        if self.redirect_uri is not None:
-            url = url + "?" + urlencode({"redirect_uri": self.redirect_uri})
+        params = params or {}
+        params.update({"redirect_uri": self.redirect_uri})
+        params.update(self.extra_params)
+        url = self.token_url + "?" + urlencode(params)
+
         token = super(AbstractAuth, self).refresh_token(
             url,
             include_client_id=True,
@@ -69,31 +98,32 @@ class AbstractAuth(OAuth2Session):
             refresh_token=self.token["refresh_token"],
         )
 
-        if self.token_updater is not None:
+        if self.token_updater:
             self.token_updater(token)
 
         return token
 
-    def request_tokens(self, code) -> Dict[str, Union[str, int]]:
-        """return new tokens."""
-        url = ENDPOINT_TOKEN_URL_PROD
-        if self.sandbox:
-            url = ENDPOINT_TOKEN_URL_SANDBOX
-        if self.redirect_uri is not None:
-            url = url + "?" + urlencode({"redirect_uri": self.redirect_uri})
+    def request_tokens(self, code, params: Dict[str, str] = None) -> Dict[str, Union[str, int]]:
+        """Return new tokens."""
+        params = params or {}
+        params.update({"redirect_uri": self.redirect_uri})
+        params.update(self.extra_params)
+        url = self.token_url + "?" + urlencode(params)
+
         token = super(AbstractAuth, self).fetch_token(
             url,
-            include_client_id=True,
+            include_client_id=bool(self.client_id),
             client_id=self.client_id,
             client_secret=self.client_secret,
             code=code,
         )
 
-        if self.token_updater is not None:
+        if self.token_updater:
             self.token_updater(token)
+
         return token
 
-    def request(self, path: str, arguments: Dict[str, str]) -> Response:
+    def request(self, path: str, params: Dict[str, str]) -> Response:
         """Make a request.
         We don't use the built-in token refresh mechanism of OAuth2 session because
         we want to allow overriding the token refresh logic.
@@ -106,7 +136,10 @@ class AbstractAuth(OAuth2Session):
         headers = {"Accept": "application/json"}
         try:
             response = super(AbstractAuth, self).request(
-                "GET", url, params=arguments, headers=headers
+                "GET",
+                url,
+                params=params,
+                headers=headers
             )
             if response.status_code == 403:
                 self.token = self.refresh_tokens()
@@ -115,7 +148,12 @@ class AbstractAuth(OAuth2Session):
         except TokenExpiredError:
             self.token = self.refresh_tokens()
 
-        return super(AbstractAuth, self).request("GET", url, params=arguments, headers=headers)
+        return super(AbstractAuth, self).request(
+            "GET",
+            url,
+            params=params,
+            headers=headers
+        )
 
     def get_usage_point_ids(self):
         """Get the usage point ids."""

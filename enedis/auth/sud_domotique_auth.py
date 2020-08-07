@@ -5,11 +5,13 @@ from urllib.parse import urlencode
 from requests import Response, Session
 from requests_oauthlib import OAuth2Session
 
-from .abstractauth import METERING_DATA_BASE_URL_PROD
+from .abstractauth import AbstractAuth, METERING_DATA_BASE_URL_PROD
 
 AUTHORIZE_URL_PROD = "http://www.sud-domotique-expert.fr/enedis/accord_enedis_prod.html"
 ENDPOINT_TOKEN_URL_PROD = "http://www.sud-domotique-expert.fr/enedis/enedis_token_prod.php"
-# ?refresh_token="+refresh_token+"&box_url="+box_url+"&flow_id="+flow_id;
+# ?refresh_token="+refresh_token
+# &box_url="+box_url
+# &flow_id="+flow_id
 
 
 class SudDomotiqueAuth(OAuth2Session):
@@ -31,10 +33,6 @@ class SudDomotiqueAuth(OAuth2Session):
             token=token,
             token_updater=token_updater
         )
-
-    def update_token(self, token: Dict[str, str]):
-        """Update tokens."""
-        self.token = token
 
     def authorization_url(self, **kwargs):
         """test state will be appended to state for sandbox testing, it can be 0 to 9"""

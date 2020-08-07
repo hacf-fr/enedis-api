@@ -46,7 +46,7 @@ Usage
 -----
 Print your current data
 
-    enedis-api -c <client_id> -s <client_secret> -u <redirect_url>
+    enedis-api -c <client_id> -s <client_secret> -u <redirect_uri>
 
 Dev env
 -------

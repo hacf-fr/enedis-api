@@ -1,6 +1,5 @@
 import argparse
 import sys
-from urllib.parse import urlparse, parse_qs
 import logging
 from http.client import HTTPConnection
 
@@ -18,7 +17,7 @@ def main():
     )
     parser.add_argument(
         "-u",
-        "--redirect-url",
+        "--redirect-uri",
         required=True,
         help="Redirect URL as stated in the Enedis admin console",
     )
@@ -48,7 +47,7 @@ def main():
     auth = AbstractAuth(
         client_id=args.client_id,
         client_secret=args.client_secret,
-        redirect_url=args.redirect_url,
+        redirect_uri=args.redirect_uri,
     )
     enedis_client = EnedisClient(auth)
 
